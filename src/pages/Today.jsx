@@ -1,37 +1,51 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useSwipeable } from "react-swipeable";
 import { Moon, Sun, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function Today() {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [containerHeight, setContainerHeight] = useState("auto");
+  const containerRef = useRef(null);
 
   const widgets = [
     {
       id: "flight",
       title: "Next Flight",
-      icon: "✈️",
-      content: "No upcoming flights found.",
+      content: (
+        <div className="p-4">
+          ✈️ <span className="font-medium">No upcoming flights found.</span>
+        </div>
+      ),
     },
     {
-      id: "travel-summary",
-      title: "Travel Summary",
-      icon: "🧳",
-      content: "2 cities, 3 flights, 1 hotel this week.",
+      id: "hotel",
+      title: "Hotel Info",
+      content: (
+        <div className="p-4">
+          🏨 <span className="font-medium">No hotel booked yet.</span>
+        </div>
+      ),
     },
     {
       id: "weather",
       title: "Weather Forecast",
-      icon: "🌤️",
-      content: "Partly sunny in Berlin. High 18°C, Low 9°C.",
-    },
-    {
-      id: "crew-notes",
-      title: "Crew Notes",
-      icon: "🧑‍🚀",
-      content: "Soundcheck at 3pm. Meet promoter at venue.",
+      content: (
+        <div className="p-4">
+          🌦️ <span className="font-medium">Weather data coming soon...</span>
+        </div>
+      ),
     },
   ];
+
+  // Adjust height based on active widget
+  useEffect(() => {
+    if (containerRef.current) {
+      const newHeight = containerRef.current.offsetHeight;
+      setContainerHeight(newHeight);
+    }
+  }, [currentIndex]);
 
   const swipeHandlers = useSwipeable({
     onSwipedLeft: () => setCurrentIndex((prev) => (prev + 1) % widgets.length),
@@ -55,22 +69,28 @@ export default function Today() {
 
       {/* Widget Carousel */}
       <div {...swipeHandlers} className="px-4">
-        <div className="relative overflow-hidden rounded-xl shadow bg-gray-100 dark:bg-gray-900 transition-all duration-300">
-          <div
-            className="h-40 flex transform transition-transform duration-300 ease-in-out"
-            style={{ transform: `translateX(-${currentIndex * 100}%)` }}
-          >
-            {widgets.map((widget, index) => (
-              <div key={index} className="min-w-full flex-shrink-0">
-                <div className="p-4">
-                  <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
-                    <span>{widget.icon}</span> {widget.title}
-                  </h2>
-                  <p className="text-sm text-gray-700 dark:text-gray-300">{widget.content}</p>
-                </div>
+        <div
+          className="relative overflow-hidden rounded-xl shadow bg-gray-100 dark:bg-gray-900 transition-all duration-300"
+          style={{ height: containerHeight }}
+        >
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={currentIndex}
+              ref={containerRef}
+              initial={{ x: 100, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -100, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="absolute top-0 left-0 w-full"
+            >
+              <div className="p-4">
+                <h2 className="text-lg font-semibold mb-2">
+                  {widgets[currentIndex].title}
+                </h2>
+                {widgets[currentIndex].content}
               </div>
-            ))}
-          </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         {/* Dots Indicator */}
@@ -78,17 +98,17 @@ export default function Today() {
           {widgets.map((_, i) => (
             <div
               key={i}
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${
+              className={`w-2 h-2 rounded-full transition-colors duration-300 ${
                 i === currentIndex
-                  ? "bg-blue-500 scale-110"
-                  : "bg-gray-400 dark:bg-gray-600 opacity-50"
+                  ? "bg-blue-500"
+                  : "bg-gray-400 dark:bg-gray-600"
               }`}
             ></div>
           ))}
         </div>
       </div>
 
-      {/* AI Assistant */}
+      {/* Assistant Buttons */}
       <div className="px-4 mt-8">
         <h2 className="text-lg font-semibold mb-2">AI Assistant</h2>
         <div className="grid grid-cols-3 gap-2">
