@@ -7,8 +7,13 @@ export function initOneSignal() {
       notifyButton: {
         enable: true,
       },
-      // REMOVE or set this to false for production
-      allowLocalhostAsSecureOrigin: false,
+      allowLocalhostAsSecureOrigin: window.location.hostname === "localhost",
+      autoResubscribe: true,
+    });
+
+    // Optional: Debug
+    OneSignal.on('subscriptionChange', function (isSubscribed) {
+      console.log("Subscription state changed:", isSubscribed);
     });
   });
 
