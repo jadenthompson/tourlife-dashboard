@@ -1,0 +1,2 @@
+id,tour_id,amount,currency,due_date,status,notes,contract_url
+00000000-0000-0000-0000-000000000007,00000000-0000-0000-0000-000000000003,7500.00,EUR,2025-05-05,pending,"Half up front, half after performance",https://example.com/berghain-contract.pdf

@@ -1,0 +1,3 @@
+id,name,email,role,avatar_url,created_at,calendar_sync_enabled,public_calendar_id,public_profile_enabled,community_opt_in,public_profile,ranking_enabled
+00000000-0000-0000-0000-000000000001,Jamie Manager,jamie@agency.com,manager,,2025-03-28 12:51:53.210608,false,127eca2e-2dbd-40e4-ac49-38c7ac84fdf7,false,false,false,false
+c6338309-8974-4142-8b4d-77755e3f286f,Jaden Thompson,jadentmusic@gmail.com,artist,,2025-03-28 23:57:55.659305,false,2ce7e1e1-4dd3-4fff-b14f-f3074f39b686,false,false,false,false

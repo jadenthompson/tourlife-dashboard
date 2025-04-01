@@ -1,0 +1,2 @@
+id,tour_id,hotel_name,address,check_in,check_out,booking_ref,notes,event_id
+00000000-0000-0000-0000-000000000006,00000000-0000-0000-0000-000000000003,Hotel Berlin Central,"Alexanderplatz 5, 10178 Berlin",2025-05-05,2025-05-07,BOOK123456,Late check-in arranged,769b1cfd-8ce4-4350-b926-1f160c7f25c8

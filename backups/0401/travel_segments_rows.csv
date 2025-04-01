@@ -1,0 +1,3 @@
+id,tour_id,type,dep_city,arr_city,departure_time,arr_time,airline,booking_ref,notes,flight_number,event_id
+00000000-0000-0000-0000-000000000005,00000000-0000-0000-0000-000000000003,flight,JFK,BER,2025-05-04 19:00:00,2025-05-05 09:00:00,Lufthansa,,2 checked bags,LH401,769b1cfd-8ce4-4350-b926-1f160c7f25c8
+cf0d5c90-915b-4b8a-8f41-bf7765ae9423,00000000-0000-0000-0000-000000000003,flight,LHR,BER,2025-05-15 20:10:53,2025-05-15 22:10:56,Lufthansa,,,DE2FI32,769b1cfd-8ce4-4350-b926-1f160c7f25c8
