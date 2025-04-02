@@ -1,3 +1,4 @@
+import React from 'react';
 // /src/pages/Today.jsx
 import { useEffect, useState } from "react";
 import { useSwipeable } from "react-swipeable";

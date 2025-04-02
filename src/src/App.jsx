@@ -1,3 +1,4 @@
+import React from 'react';
 // src/App.jsx
 import { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
