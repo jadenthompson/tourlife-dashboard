@@ -1,26 +1,55 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Home, Settings, MessageSquare, Calendar, Map } from "lucide-react";
+import { NavLink } from "react-router-dom";
 
 export default function BottomNav() {
-  const location = useLocation();
-
-  const isActive = (path) => location.pathname === path;
-
   return (
-    <nav className="h-16 border-t bg-white flex items-center justify-around shadow-sm fixed bottom-0 left-0 right-0 z-50">
-      <Link
-        to="/"
-        className={`text-sm ${isActive('/') ? 'font-semibold text-blue-600' : 'text-gray-500'}`}
-      >
-        🏠 Home
-      </Link>
-
-      <Link
-        to="/itinerary"
-        className={`text-sm ${isActive('/itinerary') ? 'font-semibold text-blue-600' : 'text-gray-500'}`}
-      >
-        📅 Itinerary
-      </Link>
+    <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-700">
+      <div className="flex justify-around items-center p-2">
+        <NavLink 
+          to="/" 
+          className={({ isActive }) => 
+            `p-2 rounded-full ${isActive ? 'text-blue-500' : 'text-gray-500 dark:text-gray-400'}`
+          }
+        >
+          <Home className="w-5 h-5" />
+        </NavLink>
+        
+        <NavLink 
+          to="/tours" 
+          className={({ isActive }) => 
+            `p-2 rounded-full ${isActive ? 'text-blue-500' : 'text-gray-500 dark:text-gray-400'}`
+          }
+        >
+          <Map className="w-5 h-5" />
+        </NavLink>
+        
+        <NavLink 
+          to="/assistant" 
+          className={({ isActive }) => 
+            `p-2 rounded-full ${isActive ? 'text-blue-500' : 'text-gray-500 dark:text-gray-400'}`
+          }
+        >
+          <MessageSquare className="w-5 h-5" />
+        </NavLink>
+        
+        <NavLink 
+          to="/public/current" 
+          className={({ isActive }) => 
+            `p-2 rounded-full ${isActive ? 'text-blue-500' : 'text-gray-500 dark:text-gray-400'}`
+          }
+        >
+          <Calendar className="w-5 h-5" />
+        </NavLink>
+        
+        <NavLink 
+          to="/settings" 
+          className={({ isActive }) => 
+            `p-2 rounded-full ${isActive ? 'text-blue-500' : 'text-gray-500 dark:text-gray-400'}`
+          }
+        >
+          <Settings className="w-5 h-5" />
+        </NavLink>
+      </div>
     </nav>
   );
 }

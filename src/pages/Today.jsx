@@ -1,72 +1,82 @@
-import React from 'react';
-// /src/pages/Today.jsx
-import { useEffect, useState } from "react";
-import { useSwipeable } from "react-swipeable";
-import supabase from "../supabase/supabaseClient";
+// src/pages/Today.jsx
+import React, { useEffect, useState } from "react";
+import { Settings, Plane, Hotel, Cloud, Landmark } from "lucide-react";
+
 import FlightWidget from "../components/FlightWidget";
 import HotelWidget from "../components/HotelWidget";
 import WeatherWidget from "../components/WeatherWidget";
-import VenuePhotoWidget from "../components/VenuePhotoWidget";
+import CityPhotoWidget from "../components/CityPhotoWidget";
 
 export default function Today() {
-  const [artist, setArtist] = useState(null);
-  const [widgetIndex, setWidgetIndex] = useState(0);
-
-  const fetchArtist = async () => {
-    const { data } = await supabase.from("artists").select("*").limit(1).single();
-    setArtist(data);
-  };
-
-  const widgets = [<FlightWidget />, <HotelWidget />, <WeatherWidget />, <VenuePhotoWidget />];
-
-  const swipeHandlers = useSwipeable({
-    onSwipedLeft: () => setWidgetIndex((prev) => (prev + 1) % widgets.length),
-    onSwipedRight: () => setWidgetIndex((prev) => (prev - 1 + widgets.length) % widgets.length),
-    trackMouse: true,
-  });
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning,";
-    if (hour < 18) return "Good afternoon,";
-    return "Good evening,";
-  };
+  const [timeOfDay, setTimeOfDay] = useState("morning");
 
   useEffect(() => {
-    fetchArtist();
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) setTimeOfDay("morning");
+    else if (hour >= 12 && hour < 18) setTimeOfDay("afternoon");
+    else setTimeOfDay("evening");
   }, []);
 
+  const greetingText = {
+    morning: "Good morning",
+    afternoon: "Good afternoon",
+    evening: "Good evening",
+  }[timeOfDay];
+
+  const widgets = [
+    {
+      name: "Flight",
+      icon: <Plane className="w-4 h-4 inline-block mr-1" />,
+      component: <FlightWidget />,
+    },
+    {
+      name: "Hotel",
+      icon: <Hotel className="w-4 h-4 inline-block mr-1" />,
+      component: <HotelWidget />,
+    },
+    {
+      name: "Weather",
+      icon: <Cloud className="w-4 h-4 inline-block mr-1" />,
+      component: <WeatherWidget />,
+    },
+    {
+      name: "Next City",
+      icon: <Landmark className="w-4 h-4 inline-block mr-1" />,
+      component: <CityPhotoWidget />,
+    },
+  ];
+
   return (
-    <div className="p-4 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-xl font-semibold">{getGreeting()}</h1>
-          {artist && <p className="text-sm text-gray-500">{artist.name} – {artist.current_tour}</p>}
-        </div>
-        <button className="text-gray-400 hover:text-black dark:hover:text-white text-lg">⚙️</button>
+    <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white transition-colors duration-300">
+      {/* Header */}
+      <div className="flex justify-between items-center px-4 pt-6 pb-2">
+        <h1 className="text-2xl font-bold">{greetingText},</h1>
+        <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
+          <Settings className="w-5 h-5" />
+        </button>
       </div>
 
-      <div {...swipeHandlers} className="relative w-full">
-        <div className="transition-all duration-300">{widgets[widgetIndex]}</div>
-        <div className="flex justify-center mt-2 space-x-1">
-          {widgets.map((_, i) => (
+      {/* Swipeable widgets container */}
+      <div className="overflow-x-auto no-scrollbar px-4">
+        <div className="flex w-max gap-4 pb-4">
+          {widgets.map((widget, index) => (
             <div
-              key={i}
-              className={`w-2 h-2 rounded-full ${
-                i === widgetIndex ? "bg-black dark:bg-white" : "bg-gray-300"
-              }`}
-            />
+              key={index}
+              className="min-w-[300px] max-w-[300px] bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-4 flex-shrink-0 snap-center"
+            >
+              <h2 className="text-lg font-semibold mb-2">
+                {widget.icon}
+                {widget.name}
+              </h2>
+              {widget.component}
+            </div>
           ))}
         </div>
       </div>
 
-      <div>
-        <h2 className="text-md font-semibold mb-2">AI Assistant</h2>
-        <div className="grid grid-cols-3 gap-2">
-          <button className="bg-gray-100 dark:bg-gray-800 px-2 py-2 rounded text-sm">🛏 When should I sleep?</button>
-          <button className="bg-gray-100 dark:bg-gray-800 px-2 py-2 rounded text-sm">✈️ Optimize my travel</button>
-          <button className="bg-gray-100 dark:bg-gray-800 px-2 py-2 rounded text-sm">📝 Summarize today</button>
-        </div>
+      {/* Bottom nav placeholder */}
+      <div className="text-center text-sm text-gray-400 mt-10">
+        BottomNav coming soon...
       </div>
     </div>
   );

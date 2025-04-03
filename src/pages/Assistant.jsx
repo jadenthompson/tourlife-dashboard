@@ -1,14 +1,18 @@
-import React from 'react';
-
+import { useState } from 'react';
+import { Send, Bot, Moon, Plane, Calendar as CalendarIcon } from 'lucide-react';
 import supabase from '../supabaseClient';
 
-import { useState } from 'react';
-
 export default function Assistant() {
-  const [aiResponse, setAiResponse] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleAssistantClick = async (prompt) => {
-    setAiResponse("🤖 Thinking...");
+  const handleSend = async (prompt = input) => {
+    if (!prompt.trim()) return;
+    
+    setMessages(prev => [...prev, { role: 'user', content: prompt }]);
+    setInput('');
+    setLoading(true);
 
     try {
       const res = await fetch("https://jorantgixpsjetsyujkl.functions.supabase.co/ask-ai", {
@@ -18,44 +22,71 @@ export default function Assistant() {
       });
 
       const data = await res.json();
-      setAiResponse(`🤖 ${data.reply}`);
+      setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
     } catch (error) {
-      console.error("AI error:", error);
-      setAiResponse("❌ Error getting response.");
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: "❌ Sorry, I couldn't process your request. Please try again." 
+      }]);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 pb-24">
-      <h1 className="text-2xl font-bold mb-4">AI Assistant</h1>
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-900 p-4 pb-24">
+      <h1 className="text-2xl font-bold mb-4 flex items-center gap-2">
+        <Bot className="w-5 h-5" /> AI Assistant
+      </h1>
 
-      <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2 mb-4">
         <button
-          onClick={() => handleAssistantClick("When should I sleep?")}
-          className="w-full text-left px-4 py-2 bg-white rounded-lg shadow-sm hover:bg-gray-100"
+          onClick={() => handleSend("When should I sleep?")}
+          className="flex items-center gap-2 p-2 bg-white dark:bg-zinc-800 rounded-lg shadow-sm hover:bg-gray-100 dark:hover:bg-zinc-700"
         >
-          🛏️ When should I sleep?
+          <Moon className="w-4 h-4" /> Sleep Time
         </button>
-
         <button
-          onClick={() => handleAssistantClick("Optimize my travel")}
-          className="w-full text-left px-4 py-2 bg-white rounded-lg shadow-sm hover:bg-gray-100"
+          onClick={() => handleSend("Optimize my travel")}
+          className="flex items-center gap-2 p-2 bg-white dark:bg-zinc-800 rounded-lg shadow-sm hover:bg-gray-100 dark:hover:bg-zinc-700"
         >
-          ✈️ Optimize my travel
+          <Plane className="w-4 h-4" /> Travel Tips
         </button>
+      </div>
 
-        <button
-          onClick={() => handleAssistantClick("Summarize today")}
-          className="w-full text-left px-4 py-2 bg-white rounded-lg shadow-sm hover:bg-gray-100"
-        >
-          📋 Summarize today
-        </button>
-
-        {aiResponse && (
-          <div className="mt-4 text-sm bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-            {aiResponse}
+      <div className="space-y-3 mb-4">
+        {messages.map((msg, i) => (
+          <div 
+            key={i} 
+            className={`p-3 rounded-lg ${
+              msg.role === 'user' 
+                ? 'bg-blue-500 text-white ml-auto max-w-[80%]' 
+                : 'bg-white dark:bg-zinc-800 mr-auto max-w-[80%]'
+            }`}
+          >
+            {msg.content}
           </div>
-        )}
+        ))}
+      </div>
+
+      <div className="fixed bottom-16 left-0 right-0 p-4 bg-gray-50 dark:bg-zinc-900">
+        <div className="flex gap-2">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+            placeholder="Ask about your tour..."
+            className="flex-1 p-2 border rounded-lg dark:bg-zinc-800"
+            disabled={loading}
+          />
+          <button
+            onClick={() => handleSend()}
+            disabled={loading}
+            className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+          >
+            <Send className="w-5 h-5" />
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -1,0 +1,285 @@
+import { useEffect, useState } from "react";
+import { Landmark, ExternalLink, RefreshCw, ImageOff, AlertTriangle } from "lucide-react";
+import supabase from "../supabaseClient";
+
+const CITY_PHOTO_CACHE = new Map();
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+export default function CityPhotoWidget() {
+  const [cityData, setCityData] = useState({
+    image: null,
+    name: "",
+    credit: null,
+    nextEvent: null
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchCityData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Verify API key is configured
+      if (!import.meta.env.VITE_UNSPLASH_KEY) {
+        throw new Error("Photo API key not configured");
+      }
+
+      // Try multiple table options with fallbacks
+      let eventData = null;
+      let cityName = "Next Destination";
+      let venueName = "";
+      let eventDate = null;
+
+      // 1. First try tour_dates table
+      try {
+        const { data, error: tourDatesError } = await supabase
+          .from("tour_dates")
+          .select("city, venue, date")
+          .order("date", { ascending: true })
+          .limit(1)
+          .single();
+
+        if (!tourDatesError && data) {
+          eventData = data;
+        }
+      } catch (e) {
+        console.log("tour_dates table not available, trying fallbacks");
+      }
+
+      // 2. Fallback to events table
+      if (!eventData) {
+        try {
+          const { data, error: eventsError } = await supabase
+            .from("events")
+            .select("city, venue_name, start_time")
+            .order("start_time", { ascending: true })
+            .limit(1)
+            .single();
+
+          if (!eventsError && data) {
+            eventData = {
+              city: data.city,
+              venue: data.venue_name,
+              date: data.start_time
+            };
+          }
+        } catch (e) {
+          console.log("events table not available, trying concerts");
+        }
+      }
+
+      // 3. Final fallback to concerts table
+      if (!eventData) {
+        try {
+          const { data, error: concertsError } = await supabase
+            .from("concerts")
+            .select("location, venue, date")
+            .order("date", { ascending: true })
+            .limit(1)
+            .single();
+
+          if (!concertsError && data) {
+            eventData = {
+              city: data.location?.split(",")[0] || "Next City",
+              venue: data.venue,
+              date: data.date
+            };
+          }
+        } catch (e) {
+          console.log("No event data tables available");
+        }
+      }
+
+      // Set city data from whichever source worked
+      if (eventData) {
+        cityName = eventData.city || "Next City";
+        venueName = eventData.venue || "";
+        eventDate = eventData.date || null;
+      } else {
+        throw new Error("No upcoming events found in any table");
+      }
+
+      const cacheKey = `city-${cityName}`;
+
+      // Check cache
+      const cached = CITY_PHOTO_CACHE.get(cacheKey);
+      if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+        setCityData({
+          image: cached.image,
+          name: cityName,
+          credit: cached.credit,
+          nextEvent: {
+            city: cityName,
+            venue: venueName,
+            date: eventDate
+          }
+        });
+        return;
+      }
+
+      // Fetch from Unsplash with fallback image
+      try {
+        const unsplashResponse = await fetch(
+          `https://api.unsplash.com/search/photos?query=${encodeURIComponent(cityName)}&client_id=${import.meta.env.VITE_UNSPLASH_KEY}&per_page=1&orientation=landscape`
+        );
+
+        if (!unsplashResponse.ok) throw new Error("Unsplash API error");
+
+        const { results } = await unsplashResponse.json();
+        const photo = results?.[0];
+
+        if (!photo?.urls?.regular) throw new Error("No photos found");
+
+        const credit = {
+          name: photo.user.name,
+          username: photo.user.username,
+          link: `${photo.links.html}?utm_source=TourLife&utm_medium=referral`
+        };
+
+        // Update cache
+        CITY_PHOTO_CACHE.set(cacheKey, {
+          image: photo.urls.regular,
+          credit,
+          timestamp: Date.now()
+        });
+
+        setCityData({
+          image: photo.urls.regular,
+          name: cityName,
+          credit,
+          nextEvent: {
+            city: cityName,
+            venue: venueName,
+            date: eventDate
+          }
+        });
+      } catch (unsplashError) {
+        console.error("Unsplash error:", unsplashError.message);
+        // Fallback to generic city image
+        setCityData({
+          image: `https://source.unsplash.com/random/800x600/?${encodeURIComponent(cityName)},city`,
+          name: cityName,
+          credit: null,
+          nextEvent: {
+            city: cityName,
+            venue: venueName,
+            date: eventDate
+          }
+        });
+      }
+    } catch (err) {
+      console.error("City photo error:", err.message);
+      setError(err.message);
+      setCityData(prev => ({ 
+        ...prev, 
+        image: null,
+        name: "Next Destination",
+        nextEvent: null
+      }));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCityData();
+  }, []);
+
+  const formatEventDate = (dateString) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      return isNaN(date) ? "" : date.toLocaleDateString("en-US", { 
+        month: "short", 
+        day: "numeric",
+        year: "numeric"
+      });
+    } catch {
+      return "";
+    }
+  };
+
+  return (
+    <div className="p-4">
+      <div className="flex justify-between items-center mb-2">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Landmark className="w-4 h-4" /> {cityData.name}
+        </h2>
+        <div className="flex items-center gap-2">
+          {error && <AlertTriangle className="w-4 h-4 text-yellow-500" />}
+          <button 
+            onClick={fetchCityData}
+            disabled={loading}
+            className={`text-xs ${loading ? 'text-gray-400' : 'text-blue-600 hover:underline'} flex items-center gap-1`}
+          >
+            {loading ? 'Refreshing...' : <RefreshCw className="w-3 h-3" />}
+          </button>
+        </div>
+      </div>
+
+      {cityData.nextEvent?.venue && (
+        <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">
+          {cityData.nextEvent.venue}
+        </p>
+      )}
+
+      {cityData.nextEvent?.date && (
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          {formatEventDate(cityData.nextEvent.date)}
+        </p>
+      )}
+
+      <div className="h-48 bg-gray-100 dark:bg-zinc-800 rounded-lg overflow-hidden relative">
+        {loading ? (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : error ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+            <ImageOff className="w-8 h-8 text-gray-400 mb-2" />
+            <p className="text-sm text-red-500">{error}</p>
+            <button 
+              onClick={fetchCityData}
+              className="mt-2 text-xs text-blue-600 hover:underline dark:text-blue-400"
+            >
+              Try again
+            </button>
+          </div>
+        ) : cityData.image ? (
+          <>
+            <img
+              src={cityData.image}
+              alt={`${cityData.name} cityscape`}
+              className="w-full h-full object-cover"
+              loading="lazy"
+              onError={(e) => {
+                e.target.src = '/city-fallback.jpg';
+                setError("Failed to load high-quality image");
+              }}
+            />
+            {cityData.credit && (
+              <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center">
+                <span>Photo by {cityData.credit.name}</span>
+                <a 
+                  href={cityData.credit.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-1 hover:underline"
+                  aria-label="View on Unsplash"
+                >
+                  <ExternalLink className="inline w-3 h-3" />
+                </a>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <Landmark className="w-8 h-8 text-gray-400 mb-2" />
+            <p className="text-sm text-gray-500 dark:text-gray-400">No image available</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
