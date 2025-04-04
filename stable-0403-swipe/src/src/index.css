@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Light Mode (default) */
+body {
+  @apply bg-white text-black;
+}
+
+/* Hide scrollbars on swipeable containers */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Dark Mode */
+.dark body {
+  @apply bg-gray-900 text-white;
+}

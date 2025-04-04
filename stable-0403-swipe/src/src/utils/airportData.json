@@ -1,0 +1,69 @@
+[
+    {
+      "name": "Goroka Airport",
+      "city": "Goroka",
+      "country": "Papua New Guinea",
+      "iata": "GKA"
+    },
+    {
+      "name": "Madang Airport",
+      "city": "Madang",
+      "country": "Papua New Guinea",
+      "iata": "MAG"
+    },
+    {
+      "name": "Mount Hagen Kagamuga Airport",
+      "city": "Mount Hagen",
+      "country": "Papua New Guinea",
+      "iata": "HGU"
+    },
+    {
+      "name": "Nadzab Airport",
+      "city": "Nadzab",
+      "country": "Papua New Guinea",
+      "iata": "LAE"
+    },
+    {
+      "name": "Port Moresby Jacksons International Airport",
+      "city": "Port Moresby",
+      "country": "Papua New Guinea",
+      "iata": "POM"
+    },
+    {
+      "name": "Wewak International Airport",
+      "city": "Wewak",
+      "country": "Papua New Guinea",
+      "iata": "WWK"
+    },
+    {
+      "name": "Narita International Airport",
+      "city": "Tokyo",
+      "country": "Japan",
+      "iata": "NRT"
+    },
+    {
+      "name": "Frankfurt International Airport",
+      "city": "Frankfurt",
+      "country": "Germany",
+      "iata": "FRA"
+    },
+    {
+      "name": "John F Kennedy International Airport",
+      "city": "New York",
+      "country": "USA",
+      "iata": "JFK"
+    },
+    {
+      "name": "Heathrow Airport",
+      "city": "London",
+      "country": "UK",
+      "iata": "LHR"
+    },
+    {
+      "name": "Berlin Brandenburg Airport",
+      "city": "Berlin",
+      "country": "Germany",
+      "iata": "BER"
+    }
+  ]
+  
