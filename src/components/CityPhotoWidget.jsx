@@ -30,7 +30,7 @@ export default function CityPhotoWidget() {
         throw new Error("Photo API key not configured");
       }
 
-      // Use only the working `events` table
+      // Fetch next event data from the 'events' table
       const { data: eventData, error: eventError } = await supabase
         .from("events")
         .select("city, venue_name, start_time")
@@ -143,7 +143,7 @@ export default function CityPhotoWidget() {
 
       {cityData.nextEvent?.venue && (
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">
-          {cityData.nextEvent.venue}
+          Venue: {cityData.nextEvent.venue}
         </p>
       )}
       {cityData.nextEvent?.date && (

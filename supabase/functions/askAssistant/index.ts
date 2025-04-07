@@ -1,37 +1,34 @@
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+/// <reference lib="deno.unstable" />
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import OpenAI from "https://esm.sh/openai@4.14.1";
+
+Deno.env.toObject(); // <- THIS IS IMPORTANT TO READ .env FILE
+
+const openai = new OpenAI({
+  apiKey: Deno.env.get("OPENAI_API_KEY"),
+});
 
 serve(async (req) => {
   try {
-    const { query, contextData } = await req.json();
+    const { prompt } = await req.json();
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: "You are a helpful assistant for a touring artist." },
-          { role: "user", content: `${contextData}\n\n${query}` },
-        ],
-        temperature: 0.7,
-      }),
+    if (!prompt) {
+      return new Response(JSON.stringify({ error: "Missing prompt" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: prompt }],
     });
 
-    const result = await response.json();
-
-    return new Response(JSON.stringify({ reply: result.choices[0].message.content }), {
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*", // 💥 THIS IS WHAT FIXES IT
-      },
+    return new Response(JSON.stringify({ reply: response.choices[0].message.content }), {
+      headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { "Access-Control-Allow-Origin": "*" },
-    });
+    console.error("Function error:", err);
+    return new Response("Something went wrong", { status: 500 });
   }
 });

@@ -4,7 +4,7 @@ import supabase from '../supabaseClient';
 
 
 export default function Itinerary() {
-  const tourId = '00000000-0000-0000-0000-000000000003';
+  const tourId = 'd51c1412-2b10-41f2-92d0-80c663d8b824';
   const [events, setEvents] = useState([]);
   const [guestlist, setGuestlist] = useState([]);
 

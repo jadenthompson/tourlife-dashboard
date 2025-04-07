@@ -1,0 +1,8 @@
+{
+  "routes": {
+    "askAssistant": {
+      "methods": ["POST"],
+      "public": true
+    }
+  }
+}

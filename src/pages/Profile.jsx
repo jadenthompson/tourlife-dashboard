@@ -1,206 +1,170 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import supabase from '../supabaseClient';
-import { Loader } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { Camera } from 'lucide-react';
+import { toPng } from 'html-to-image';
 
-const Profile = () => {
-  const [user, setUser] = useState(null);
-  const [artists, setArtists] = useState([]);
-  const [selectedArtist, setSelectedArtist] = useState(null);
-  const [tourStats, setTourStats] = useState({
-    cities: 0,
-    shows: 0,
-    flights: 0,
-  });
-  const [loading, setLoading] = useState(true);
+export default function Profile() {
+  const [userId, setUserId] = useState(null);
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [fullName, setFullName] = useState('Your Name');
+  const [tourStats, setTourStats] = useState({ cities: 0, shows: 0, flights: 0 });
+  const cardRef = useRef();
 
   useEffect(() => {
-    const getSessionAndData = async () => {
+    const fetchProfile = async () => {
       const {
-        data: { session },
-      } = await supabase.auth.getSession();
+        data: { user },
+        error: authError
+      } = await supabase.auth.getUser();
 
-      if (session?.user) {
-        setUser(session.user);
-        fetchArtists(session.user.id);
-      } else {
-        setLoading(false);
+      if (authError || !user) {
+        toast.error('Not logged in.');
+        return;
       }
+
+      setUserId(user.id);
+
+      // Fetch profile from users table
+      const { data: userProfile, error: profileError } = await supabase
+        .from('users')
+        .select('full_name, avatar_url')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (profileError || !userProfile) {
+        toast.error('Could not load profile.');
+        return;
+      }
+
+      setFullName(userProfile.full_name || 'Your Name');
+      setAvatarUrl(userProfile.avatar_url || null);
+
+      // Load stats
+      const [{ data: events }, { data: travel }] = await Promise.all([
+        supabase.from('events').select('city').eq('user_id', user.id),
+        supabase.from('travel_segments').select('id').eq('user_id', user.id),
+      ]);
+
+      const citySet = new Set(events?.map((e) => e.city));
+      setTourStats({
+        cities: citySet.size || 0,
+        shows: events?.length || 0,
+        flights: travel?.length || 0,
+      });
     };
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        if (session?.user) {
-          setUser(session.user);
-          fetchArtists(session.user.id);
-        } else {
-          setUser(null);
-          setLoading(false);
-        }
-      }
-    );
-
-    getSessionAndData();
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
+    fetchProfile();
   }, []);
 
-  const fetchArtists = async (userId) => {
-    const { data, error } = await supabase
-      .from('artists')
-      .select('*')
-      .eq('user_id', userId);
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !userId) return;
 
-    if (error || !data || data.length === 0) {
-      console.error('Artist fetch error:', error);
-      setLoading(false);
+    const fileExt = file.name.split('.').pop();
+    const filePath = `${userId}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) {
+      toast.error('Upload failed.');
       return;
     }
 
-    setArtists(data);
-    setSelectedArtist(data[0]); // default to first artist
-    fetchTourStats(data[0]);
-  };
+    const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    const publicUrl = data.publicUrl;
 
-  const fetchTourStats = async (artist) => {
-    if (!artist || !artist.id) return;
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ avatar_url: publicUrl })
+      .eq('id', userId);
 
-    const { data: tourData, error: tourError } = await supabase
-      .from('tours')
-      .select('id')
-      .eq('artist_id', artist.id)
-      .limit(1)
-      .maybeSingle();
-
-    if (tourError || !tourData) {
-      console.warn('No tour found for artist.');
-      setTourStats({ cities: 0, shows: 0, flights: 0 });
-      setLoading(false);
-      return;
+    if (updateError) {
+      toast.error('Failed to save avatar URL.');
+    } else {
+      setAvatarUrl(publicUrl);
+      toast.success('Profile photo updated!');
     }
-
-    const tourId = tourData.id;
-
-    const { data: events, error: eventError } = await supabase
-      .from('events')
-      .select('id, city')
-      .eq('tour_id', tourId);
-
-    const { data: travelSegments, error: travelError } = await supabase
-      .from('travel_segments')
-      .select('id')
-      .eq('tour_id', tourId);
-
-    if (eventError || travelError) {
-      console.error('Data fetch error:', eventError || travelError);
-      setTourStats({ cities: 0, shows: 0, flights: 0 });
-      setLoading(false);
-      return;
-    }
-
-    const uniqueCities = new Set(events.map(e => e.city));
-    setTourStats({
-      cities: uniqueCities.size,
-      shows: events.length,
-      flights: travelSegments.length,
-    });
-
-    setLoading(false);
   };
 
-  const handleArtistChange = (e) => {
-    const selected = artists.find((a) => a.id === e.target.value);
-    setSelectedArtist(selected);
-    setTourStats({ cities: 0, shows: 0, flights: 0 });
-    setLoading(true);
-    fetchTourStats(selected);
+  const handleExport = async () => {
+    if (!cardRef.current) return;
+    const dataUrl = await toPng(cardRef.current);
+    const link = document.createElement('a');
+    link.download = 'tour-pass.png';
+    link.href = dataUrl;
+    link.click();
   };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <Loader className="animate-spin h-6 w-6 text-gray-500" />
-      </div>
-    );
-  }
-
-  if (!user || !selectedArtist) {
-    return (
-      <div className="text-center mt-20 text-gray-600">
-        You must be signed in to view your Tour Pass.
-      </div>
-    );
-  }
 
   return (
-    <div className="max-w-md mx-auto mt-8 p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
-      <h1 className="text-2xl font-bold text-center mb-4">🎟️ Tour Pass</h1>
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black px-4 py-6">
+      <div
+        ref={cardRef}
+        className="w-full max-w-sm p-6 rounded-3xl bg-gradient-to-b from-purple-500 to-black text-white shadow-xl relative min-h-[90vh] flex flex-col justify-between"
+      >
+        {/* Camera icon */}
+        <label htmlFor="avatar-upload">
+          <div className="absolute top-5 right-5 z-10 cursor-pointer bg-white/20 hover:bg-white/30 p-2 rounded-full">
+            <Camera className="w-5 h-5 text-white" />
+          </div>
+        </label>
+        <input
+          id="avatar-upload"
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+          className="hidden"
+        />
 
-      {/* Artist Dropdown */}
-      {artists.length > 1 && (
-        <div className="mb-4 text-sm text-gray-700 dark:text-gray-300">
-          <label htmlFor="artist-select" className="block mb-1">Select Artist:</label>
-          <select
-            id="artist-select"
-            value={selectedArtist.id}
-            onChange={handleArtistChange}
-            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-2 text-sm"
-          >
-            {artists.map((artist) => (
-              <option key={artist.id} value={artist.id}>
-                {artist.name}
-              </option>
-            ))}
-          </select>
+        {/* Avatar */}
+        <div className="flex flex-col items-center mt-6">
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt="Avatar"
+              className="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover"
+            />
+          ) : (
+            <div className="w-24 h-24 rounded-full border-2 border-white flex items-center justify-center text-sm text-gray-300">
+              Avatar
+            </div>
+          )}
         </div>
-      )}
 
-      <div className="text-center">
-        <p className="text-xl font-semibold text-gray-900 dark:text-white">
-          {selectedArtist.name}
-        </p>
-        <p className="text-gray-500 text-sm mt-1">Powered by TourLife</p>
-      </div>
+        {/* Name */}
+        <div className="text-center mt-4">
+          <h2 className="text-xl font-bold">{fullName}</h2>
+          <p className="text-xs text-gray-300">Powered by TourLife</p>
+        </div>
 
-      <div className="grid grid-cols-3 gap-4 text-center mt-6">
-        <div>
-          <p className="text-lg font-bold text-gray-800 dark:text-white">{tourStats.cities}</p>
-          <p className="text-sm text-gray-500">Cities</p>
-        </div>
-        <div>
-          <p className="text-lg font-bold text-gray-800 dark:text-white">{tourStats.shows}</p>
-          <p className="text-sm text-gray-500">Shows</p>
-        </div>
-        <div>
-          <p className="text-lg font-bold text-gray-800 dark:text-white">{tourStats.flights}</p>
-          <p className="text-sm text-gray-500">Flights</p>
-        </div>
-      </div>
-
-      {/* Badges */}
-      {(tourStats.shows >= 25 || tourStats.flights >= 10 || tourStats.cities >= 5) && (
-        <div className="mt-6 text-center">
-          <h2 className="text-md font-semibold text-gray-700 dark:text-white mb-2">🏅 Achievements</h2>
-          <div className="flex justify-center gap-2 flex-wrap">
-            {tourStats.shows >= 25 && (
-              <span className="bg-purple-100 text-purple-800 text-xs px-3 py-1 rounded-full">🎤 25 Shows Club</span>
-            )}
-            {tourStats.flights >= 10 && (
-              <span className="bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full">🛫 10 Flights Club</span>
-            )}
-            {tourStats.cities >= 5 && (
-              <span className="bg-green-100 text-green-800 text-xs px-3 py-1 rounded-full">🌍 Globetrotter</span>
-            )}
+        {/* Stats */}
+        <div className="flex justify-around mt-8 text-sm">
+          <div className="text-center">
+            <p className="font-bold text-lg">{tourStats.cities}</p>
+            <p className="text-gray-300">Cities</p>
+          </div>
+          <div className="text-center">
+            <p className="font-bold text-lg">{tourStats.shows}</p>
+            <p className="text-gray-300">Shows</p>
+          </div>
+          <div className="text-center">
+            <p className="font-bold text-lg">{tourStats.flights}</p>
+            <p className="text-gray-300">Flights</p>
           </div>
         </div>
-      )}
 
-      <div className="mt-6 text-center text-sm text-gray-400">
-        More badges and stats coming soon...
+        {/* Export */}
+        <div className="mt-10 flex justify-center">
+          <button
+            onClick={handleExport}
+            className="px-4 py-2 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-full text-sm font-medium shadow hover:opacity-90"
+          >
+            Export as Instagram Story
+          </button>
+        </div>
       </div>
     </div>
   );
-};
-
-export default Profile;
+}
